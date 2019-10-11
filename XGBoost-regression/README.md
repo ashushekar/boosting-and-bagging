@@ -239,4 +239,5 @@ xgboost.plot_importance(xg_reg)
 plt.rcParams['figure.figsize'] = [5, 5]
 plt.show(block=True)
 ```
-![Feature Importance](https://github.com/ashushekar/boosting-and-bagging/F-score.png)
+
+![F-score](https://user-images.githubusercontent.com/35737777/66647513-07c5f300-ec21-11e9-846d-3348e7f179d3.png)
