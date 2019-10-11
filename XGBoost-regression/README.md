@@ -174,7 +174,7 @@ and **.predict()** methods.
 ```python
 # Apply xgbregressor on the dataset
 xgb_reg = xgboost.XGBRegressor(objective='reg:linear', colsample_bytree=0.3, learning_rate=0.1,
-                               max_depth=5, reg_alpha=10, n_estimators=200)
+                               max_depth=5, reg_alpha=10, n_estimators=10)
 
 xgb_reg.fit(X_train, y_train)
 predictions = xgb_reg.predict(X_test)
@@ -185,6 +185,58 @@ Now let is compute the RMSE
 print("RMSE: {}".format(np.sqrt(mean_squared_error(y_test, predictions))))
 ```
 ```sh
-RMSE: 3.009740477679191
+RMSE: 9.106604511148243
 ```
-We can see that your RMSE for the price prediction came out to be around 3 per 1000$
+We can see that your RMSE for the price prediction came out to be around 9.1 per 1000$.
+
+### k-fold Cross Validation using XGBoost
+In order to build more robust models, it is common to do a k-fold cross validation where all the entries in the original 
+training dataset are used for both training as well as validation. Also, each entry is used for validation just once. 
+XGBoost supports k-fold cross validation via the cv() method. All we have to do is specify the _nfolds_ parameter, which 
+is the number of cross validation sets we want to build.
+
+1. num_boost_round      :   denotes the number of trees you build (analogous to n_estimators)
+2. metrics              :   tells the evaluation metrics to be watched during CV
+3. as_pandas            :   to return the results in a pandas DataFrame.
+4. early_stopping_rounds:   finishes training of the model early if the hold-out metric ("rmse" in our case) does not 
+                            improve for a given number of rounds.
+5. seed                 :   for reproducibility of results.
+
+This time we will create a hyper-parameter dictionary params which holds all the hyper-parameters and their values as 
+key-value pairs but will exclude the _n_estimators_ from the hyper-parameter dictionary using **num_boost_rounds**.
+
+We will use these parameters to build a 3-fold cross validation model by invoking XGBoost's cv() method and store the 
+results in a cv_results DataFrame. Note that here we are using the Dmatrix object which we created before.
+
+```python
+# Using K-fold cross validation
+params = {"objective": "reg:squarederror", "colsample_bytree": 0.3, "learning_rate": 0.1, "max_depth": 5,
+          "reg_alpha": 10}
+xgb_reg_cv = xgboost.cv(dtrain=boston_dmatrix, params=params, nfold=3, num_boost_round=400, early_stopping_rounds=10,
+                        metrics="rmse", as_pandas=True, seed=42)
+
+# Calculate root mean squared error
+print((xgb_reg_cv["test-rmse-mean"]).tail(1))
+```
+
+```sh
+245    3.593899
+Name: test-rmse-mean, dtype: float64
+```
+
+We can see that your RMSE for the price prediction has reduced as compared to last time and came out to be around 3.59 
+per 1000$. We can reach an even lower RMSE for a different set of hyper-parameters.
+
+### Visualize Feature importance
+Once we train a model using the XGBoost learning API, count the number of times each feature is split on across all 
+boosting rounds (trees) in the model, and then visualizing the result as a bar graph, with the features ordered 
+according to how many times they appear. XGBoost has a plot_importance() function that allows us to do exactly this.
+
+```python
+# Visualize the feature importance
+xg_reg = xgboost.train(params=params, dtrain=boston_dmatrix, num_boost_round=10)
+xgboost.plot_importance(xg_reg)
+plt.rcParams['figure.figsize'] = [5, 5]
+plt.show(block=True)
+```
+![Feature Importance](https://github.com/ashushekar/boosting-and-bagging/F-score.png)
